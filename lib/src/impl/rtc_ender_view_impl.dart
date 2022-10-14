@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:agora_rtc_engine/src/rtc_render_view.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -52,6 +51,15 @@ class RtcSurfaceViewState extends State<RtcSurfaceView> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        child: HtmlElementView(
+          viewType: 'AgoraSurfaceView',
+          onPlatformViewCreated: _onPlatformViewCreated,
+        ),
+      );
+    }
     if (defaultTargetPlatform == TargetPlatform.android) {
       const viewType = 'AgoraSurfaceView';
       final creationParams = {
@@ -75,7 +83,8 @@ class RtcSurfaceViewState extends State<RtcSurfaceView> {
           gestureRecognizers: widget.gestureRecognizers,
         ),
       );
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         child: UiKitView(
@@ -85,24 +94,6 @@ class RtcSurfaceViewState extends State<RtcSurfaceView> {
           creationParams: _creationParams,
           creationParamsCodec: const StandardMessageCodec(),
           gestureRecognizers: widget.gestureRecognizers,
-        ),
-      );
-    } else if (kIsWeb) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        child: PlatformViewLink(
-          viewType: 'AgoraSurfaceView',
-          onCreatePlatformView: _onCreatePlatformView,
-          surfaceFactory:
-              (BuildContext context, PlatformViewController controller) {
-            return PlatformViewSurface(
-              controller: controller,
-              hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-              gestureRecognizers: widget.gestureRecognizers != null
-                  ? widget.gestureRecognizers!
-                  : const <Factory<OneSequenceGestureRecognizer>>{},
-            );
-          },
         ),
       );
     }
@@ -200,17 +191,7 @@ class RtcSurfaceViewState extends State<RtcSurfaceView> {
       _channels[id] = MethodChannel('agora_rtc_engine/surface_view_$id');
     }
     widget.onPlatformViewCreated?.call(id);
-  }
-
-  PlatformViewController _onCreatePlatformView(
-      PlatformViewCreationParams params) {
-    final controller = _HtmlElementViewController(params.id, params.viewType);
-    controller._initialize().then((_) {
-      params.onPlatformViewCreated(params.id);
-      _onPlatformViewCreated(params.id);
-      _setData();
-    });
-    return controller;
+    _setData();
   }
 }
 
@@ -374,51 +355,5 @@ class RtcTextureViewState extends State<RtcTextureView> {
       _channels[id] = MethodChannel('agora_rtc_engine/texture_view_$id');
     }
     widget.onPlatformViewCreated?.call(id);
-  }
-}
-
-class _HtmlElementViewController extends PlatformViewController
-    with WidgetsBindingObserver {
-  _HtmlElementViewController(
-    this.viewId,
-    this.viewType,
-  );
-
-  @override
-  final int viewId;
-
-  /// The unique identifier for the HTML view type to be embedded by this widget.
-  ///
-  /// A PlatformViewFactory for this type must have been registered.
-  final String viewType;
-
-  bool _initialized = false;
-
-  Future<void> _initialize() async {
-    final args = <String, dynamic>{
-      'id': viewId,
-      'viewType': viewType,
-    };
-    await SystemChannels.platform_views.invokeMethod<void>('create', args);
-    _initialized = true;
-  }
-
-  @override
-  Future<void> clearFocus() async {
-    // Currently this does nothing on Flutter Web.
-    // TODO(het): Implement this. See https://github.com/flutter/flutter/issues/39496
-  }
-
-  @override
-  Future<void> dispatchPointerEvent(PointerEvent event) async {
-    // We do not dispatch pointer events to HTML views because they may contain
-    // cross-origin iframes, which only accept user-generated events.
-  }
-
-  @override
-  Future<void> dispose() async {
-    if (_initialized) {
-      await SystemChannels.platform_views.invokeMethod<void>('dispose', viewId);
-    }
   }
 }

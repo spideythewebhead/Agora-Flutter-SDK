@@ -7,7 +7,7 @@ IRIS_PROJECT_PATH=$(pwd)/web
 
 pushd "$AGORA_FLUTTER_PROJECT_PATH"
 echo "Updating submodule web"
-git submodule update --remote
+git submodule update --init --remote --recursive web
 popd
 
 pushd "$IRIS_PROJECT_PATH"

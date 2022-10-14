@@ -3,12 +3,11 @@ library agora_rtc_engine_web;
 
 import 'dart:async';
 import 'dart:convert';
-
 // In order to *not* need this ignore, consider extracting the "web" version
 // of your plugin as a separate package, instead of inlining it in the same
 // package as the core of your plugin.
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:html';
+import 'dart:html' as html;
 import 'dart:ui' as ui;
 
 import 'package:agora_rtc_engine/src/enums.dart';
@@ -86,25 +85,36 @@ class AgoraRtcEngineWeb {
     // ignore: undefined_prefixed_name
     ui.platformViewRegistry.registerViewFactory('AgoraSurfaceView',
         (int viewId) {
-      var element = DivElement();
-      MethodChannel('agora_rtc_engine/surface_view_$viewId',
-              const StandardMethodCodec(), registrar)
-          .setMethodCallHandler(
-              (call) => pluginInstance.handleViewMethodCall(call, element));
-      return element;
+      final div = html.document.createElement('div') as html.DivElement;
+      div
+        ..id = '_agora-view-$viewId'
+        // ..style.borderRadius = '9999px'
+        // ..style.overflow = 'hidden'
+        ..style.width = '100%'
+        ..style.height = '100%';
+
+      MethodChannel(
+        'agora_rtc_engine/surface_view_$viewId',
+        const StandardMethodCodec(),
+        registrar,
+      ).setMethodCallHandler(
+        (call) => pluginInstance.handleViewMethodCall(call, div),
+      );
+      return div;
     });
 
-    var element = ScriptElement()
-      ..src =
-          'assets/packages/agora_rtc_engine/assets/AgoraRtcWrapper.bundle.js'
-      ..type = 'application/javascript';
-    late StreamSubscription<Event> loadSubscription;
-    loadSubscription = element.onLoad.listen((event) {
+    final scriptElement =
+        html.document.createElement('script') as html.ScriptElement
+          ..src =
+              'assets/packages/agora_rtc_engine/assets/AgoraRtcWrapper.bundle.js'
+          ..type = 'application/javascript';
+    late StreamSubscription<html.Event> loadSubscription;
+    loadSubscription = scriptElement.onLoad.listen((event) {
       loadSubscription.cancel();
       pluginInstance._engineMain = _IrisRtcEngine();
       pluginInstance._engineSub = _IrisRtcEngine();
     });
-    document.body!.append(element);
+    html.document.body!.append(scriptElement);
   }
 
   final _controllerEngine = StreamController();
@@ -203,7 +213,10 @@ class AgoraRtcEngineWeb {
   }
 
   // ignore: public_member_api_docs
-  Future<dynamic> handleViewMethodCall(MethodCall call, Element element) async {
+  Future<dynamic> handleViewMethodCall(
+    MethodCall call,
+    html.Element element,
+  ) async {
     var data = <String, dynamic>{};
     if (call.arguments != null) {
       data = Map<String, dynamic>.from(call.arguments);
@@ -213,29 +226,31 @@ class AgoraRtcEngineWeb {
       if (uid == 0) {
         const kEngineSetupLocalVideo = 20;
         return promiseToFuture(_engine(data).callApi(
-            kEngineSetupLocalVideo,
-            jsonEncode({
-              'canvas': {
-                'uid': 0,
-                'channelId': data['channelId'],
-                'renderMode': data['renderMode'],
-                'mirrorMode': data['mirrorMode'],
-              },
-            }),
-            element));
+          kEngineSetupLocalVideo,
+          jsonEncode({
+            'canvas': {
+              'uid': 0,
+              'channelId': data['channelId'],
+              'renderMode': data['renderMode'],
+              'mirrorMode': data['mirrorMode'],
+            },
+          }),
+          element,
+        ));
       } else {
         const kEngineSetupRemoteVideo = 21;
         return promiseToFuture(_engine(data).callApi(
-            kEngineSetupRemoteVideo,
-            jsonEncode({
-              'canvas': {
-                'uid': uid,
-                'channelId': data['channelId'],
-                'renderMode': data['renderMode'],
-                'mirrorMode': data['mirrorMode'],
-              }
-            }),
-            element));
+          kEngineSetupRemoteVideo,
+          jsonEncode({
+            'canvas': {
+              'uid': uid,
+              'channelId': data['channelId'],
+              'renderMode': data['renderMode'],
+              'mirrorMode': data['mirrorMode'],
+            }
+          }),
+          element,
+        ));
       }
     } else {
       throw PlatformException(

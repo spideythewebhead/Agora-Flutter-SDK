@@ -6,8 +6,8 @@ version: 5.3.1
 homepage: https://www.agora.io
 repository: https://github.com/AgoraIO-Extensions/Agora-Flutter-SDK
 environment:
-  sdk: '>=2.12.0 <3.0.0'
-  flutter: '>=2.0.0'
+  sdk: ">=2.12.0 <3.0.0"
+  flutter: ">=2.0.0"
 dependencies:
   flutter:
     sdk: flutter
@@ -39,4 +39,5 @@ flutter:
         fileName: agora_rtc_engine_web.dart
         pluginClass: AgoraRtcEngineWeb
   assets:
-    - assets/AgoraRtcWrapper.bundle.js
+    # - assets/AgoraRtcWrapper.bundle.js
+    - web/dist/AgoraRtcWrapper.bundle.js
