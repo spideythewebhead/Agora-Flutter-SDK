@@ -102,25 +102,13 @@ class AgoraRtcEngineWeb {
       );
       return div;
     });
-
-    final scriptElement =
-        html.document.createElement('script') as html.ScriptElement
-          ..src =
-              'assets/packages/agora_rtc_engine/assets/AgoraRtcWrapper.bundle.js'
-          ..type = 'application/javascript';
-    late StreamSubscription<html.Event> loadSubscription;
-    loadSubscription = scriptElement.onLoad.listen((event) {
-      loadSubscription.cancel();
-      pluginInstance._engineMain = _IrisRtcEngine();
-      pluginInstance._engineSub = _IrisRtcEngine();
-    });
-    html.document.body!.append(scriptElement);
   }
 
   final _controllerEngine = StreamController();
   final _controllerChannel = StreamController();
   late _IrisRtcEngine _engineMain;
   late _IrisRtcEngine _engineSub;
+  bool _isSdkInit = false;
 
   _IrisRtcEngine _engine(Map<String, dynamic> args) {
     bool subProcess = args['subProcess'];
@@ -139,6 +127,40 @@ class AgoraRtcEngineWeb {
     if (call.arguments != null) {
       args = Map<String, dynamic>.from(call.arguments);
     }
+
+    if (call.method == '__initSdk') {
+      if (_isSdkInit) {
+        return true;
+      }
+
+      final completer = Completer<bool>();
+      final scriptElement =
+          html.document.createElement('script') as html.ScriptElement
+            ..id = '__agora_bundle'
+            ..src =
+                'assets/packages/agora_rtc_engine/assets/AgoraRtcWrapper.bundle.js'
+            ..type = 'application/javascript';
+
+      late StreamSubscription<html.Event> loadSubscription;
+      loadSubscription = scriptElement.onLoad.listen((event) {
+        loadSubscription.cancel();
+        _engineMain = _IrisRtcEngine();
+        _engineSub = _IrisRtcEngine();
+        completer.complete(true);
+        _isSdkInit = true;
+      });
+
+      late StreamSubscription<html.Event> errorSubscription;
+      errorSubscription = scriptElement.onError.listen((event) {
+        errorSubscription.cancel();
+        completer.complete(false);
+        _isSdkInit = false;
+      });
+
+      html.document.body!.append(scriptElement);
+      return completer.future;
+    }
+
     if (call.method == 'callApi') {
       int apiType = args['apiType'];
       if (apiType == 0) {

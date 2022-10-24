@@ -2311,4 +2311,9 @@ abstract class RtcEngine {
 
   /// @nodoc
   Future<void> enableSpatialAudio(bool enabled);
+
+  /// used by web only
+  static Future<bool> initSdk() {
+    return RtcEngineImpl.initSdk();
+  }
 }

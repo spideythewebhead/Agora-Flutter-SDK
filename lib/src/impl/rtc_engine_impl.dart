@@ -2086,4 +2086,15 @@ class RtcEngineImpl with MediaRecorderImplMixin implements RtcEngine {
       'params': jsonEncode({}),
     });
   }
+
+  /// @nodoc
+  static Future<bool> initSdk() async {
+    if (kIsWeb) {
+      return _methodChannel
+          .invokeMethod<bool>('__initSdk')
+          .then((value) => value ?? false);
+    }
+
+    return SynchronousFuture(true);
+  }
 }
